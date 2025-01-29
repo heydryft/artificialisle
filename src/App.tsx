@@ -15,6 +15,8 @@ import MusicButton from './components/buttons/MusicButton.tsx';
 import Button from './components/buttons/Button.tsx';
 import { UnifiedWalletButton, UnifiedWalletProvider } from '@jup-ag/wallet-adapter';
 import { ConnectWalletButton, SendSolButton } from './components/WalletComponent.tsx';
+import InteractButton from './components/buttons/InteractButton.tsx';
+import FreezeButton from './components/FreezeButton.tsx';
 // import InteractButton from './components/buttons/InteractButton.tsx';
 // import FreezeButton from './components/FreezeButton.tsx';
 // import { MAX_HUMAN_PLAYERS } from '../convex/constants.ts';
@@ -174,9 +176,9 @@ export default function Home() {
           <Game />
           <footer className="absolute justify-end  lg:bottom-0 right-0  flex items-center  gap-3 p-2 lg:p-6 flex-wrap ">
             <div className="flex gap-4 flex-grow ">
-              {/*  <FreezeButton />
+               {/* <FreezeButton />
 
-            <InteractButton /> */}
+              <InteractButton /> */}
 
               <ConnectWalletButton />
 

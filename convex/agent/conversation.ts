@@ -7,6 +7,10 @@ import { api, internal } from '../_generated/api';
 import * as embeddingsCache from './embeddingsCache';
 import { GameId, conversationId, playerId } from '../aiTown/ids';
 import { NUM_MEMORIES_TO_SEARCH } from '../constants';
+import { TOKEN_ANALYSIS_PROMPT, generateTokenDiscussion } from './prompts';
+import { TokenService } from './tokenService';
+
+const tokenService = new TokenService();
 
 const selfInternal = internal.agent.conversation;
 
@@ -17,6 +21,7 @@ export async function startConversationMessage(
   playerId: GameId<'players'>,
   otherPlayerId: GameId<'players'>,
 ): Promise<string> {
+  console.log('Starting conversation message');
   const { player, otherPlayer, agent, otherAgent, lastConversation } = await ctx.runQuery(
     selfInternal.queryPromptData,
     {
@@ -38,12 +43,24 @@ export async function startConversationMessage(
     Number(process.env.NUM_MEMORIES_TO_SEARCH) || NUM_MEMORIES_TO_SEARCH,
   );
 
+  let trendingTokens = [];
+    try {
+       trendingTokens = await tokenService.getTrendingTokens();
+    } catch (error) {
+    console.error('Failed to fetch trending tokens:', error);
+   }
+
   const memoryWithOtherPlayer = memories.find(
     (m) => m.data.type === 'conversation' && m.data.playerIds.includes(otherPlayerId),
   );
   const prompt = [
     `You are ${player.name}, and you just started a conversation with ${otherPlayer.name}.`,
-  ];
+    TOKEN_ANALYSIS_PROMPT,
+    generateTokenDiscussion(trendingTokens),
+    `You may naturally bring up trending tokens if it fits the conversation.`,
+    `Remember to stay in character while discussing tokens.`,
+  ]
+
   prompt.push(...agentPrompts(otherPlayer, agent, otherAgent ?? null));
   prompt.push(...previousConversationPrompt(otherPlayer, lastConversation));
   prompt.push(...relatedMemoriesPrompt(memories));
@@ -91,6 +108,13 @@ export async function continueConversationMessage(
       conversationId,
     },
   );
+  let trendingTokens = [];
+  try {
+    trendingTokens = await tokenService.getTrendingTokens();
+  } catch (error) {
+    console.error('Failed to fetch trending tokens:', error);
+  }
+
   const now = Date.now();
   const started = new Date(conversation.created);
   const embedding = await embeddingsCache.fetch(
@@ -101,6 +125,13 @@ export async function continueConversationMessage(
   const prompt = [
     `You are ${player.name}, and you're currently in a conversation with ${otherPlayer.name}.`,
     `The conversation started at ${started.toLocaleString()}. It's now ${now.toLocaleString()}.`,
+    TOKEN_ANALYSIS_PROMPT,
+    generateTokenDiscussion(trendingTokens),
+    `If the conversation naturally leads to discussing crypto or investments:`,
+    `- You can mention trending tokens you know about`,
+    `- Stay in character while discussing tokens`,
+    `- Keep responses casual and conversational`,
+    `- Don't force token discussion if it doesn't fit naturally and some timestalk about other other cool stuff like sports,movies,music,etc`,
   ];
   prompt.push(...agentPrompts(otherPlayer, agent, otherAgent ?? null));
   prompt.push(...relatedMemoriesPrompt(memories));
@@ -151,7 +182,8 @@ export async function leaveConversationMessage(
   );
   const prompt = [
     `You are ${player.name}, and you're currently in a conversation with ${otherPlayer.name}.`,
-    `You've decided to leave the question and would like to politely tell them you're leaving the conversation.`,
+    `You've decided to leave the conversation and would like to politely tell them you're leaving.`,
+    `If you were discussing crypto or tokens, make a casual reference to keeping an eye on the markets.`,
   ];
   prompt.push(...agentPrompts(otherPlayer, agent, otherAgent ?? null));
   prompt.push(
@@ -191,6 +223,12 @@ function agentPrompts(
   if (agent) {
     prompt.push(`About you: ${agent.identity}`);
     prompt.push(`Your goals for the conversation: ${agent.plan}`);
+        // Add crypto knowledge if agent has relevant background
+        if (agent.identity.toLowerCase().includes('crypto') || 
+        agent.identity.toLowerCase().includes('trader') ||
+        agent.identity.toLowerCase().includes('investor')) {
+      prompt.push(`You are knowledgeable about cryptocurrency and trading, but remember to be casual and not too technical.`);
+    }
   }
   if (otherAgent) {
     prompt.push(`About ${otherPlayer.name}: ${otherAgent.identity}`);
@@ -220,7 +258,13 @@ function relatedMemoriesPrompt(memories: memory.Memory[]): string[] {
   if (memories.length > 0) {
     prompt.push(`Here are some related memories in decreasing relevance order:`);
     for (const memory of memories) {
-      prompt.push(' - ' + memory.description);
+      // Add special handling for token-related memories
+      if (memory.description.toLowerCase().includes('token') || 
+          memory.description.toLowerCase().includes('crypto')) {
+        prompt.push(` - 💰 ${memory.description} (This was a conversation about crypto)`);
+      } else {
+        prompt.push(' - ' + memory.description);
+      }
     }
   }
   return prompt;
