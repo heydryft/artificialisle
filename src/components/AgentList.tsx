@@ -49,6 +49,8 @@ interface AgentListProps {
   setSelectedElement: (element: { kind: 'player'; id: GameId<'players'> }) => void;
 }
 
+export { agents };
+
 export default function AgentList({ setSelectedElement }: AgentListProps) {
   const [balances, setBalances] = useState<{ [key: string]: number | null }>({});
   const [isVoteModalOpen, setIsVoteModalOpen] = useState(false);
