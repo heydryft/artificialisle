@@ -28,7 +28,8 @@ export default function Home() {
   // Create an effect to watch the Game's output
   useEffect(() => {
     const checkGameContent = () => {
-      const gameContent = document.querySelector('.flex.flex-col.h-screen.w-full');
+      // Update selector to match new layout structure
+      const gameContent = document.querySelector('.fixed.inset-0.w-screen.h-screen');
       if (gameContent) {
         setIsGameMounted(true);
       }
