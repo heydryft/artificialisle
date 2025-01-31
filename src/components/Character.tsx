@@ -19,6 +19,42 @@ const static_initialCameraState = {
 // Add a constant for consistent zoom level
 const ZOOM_LEVEL = 1.1;
 
+const calculateBoundedCameraPosition = (
+  centerX: number,
+  centerY: number,
+  x: number,
+  y: number,
+  scale: number,
+  stageWidth: number,
+  stageHeight: number,
+  worldWidth: number,
+  worldHeight: number
+) => {
+  // Calculate the scaled dimensions
+  const scaledWidth = stageWidth / scale;
+  const scaledHeight = stageHeight / scale;
+  
+  // Calculate the boundaries
+  const minX = scaledWidth / 2;
+  const maxX = worldWidth - scaledWidth / 2;
+  const minY = scaledHeight / 2;
+  const maxY = worldHeight - scaledHeight / 2;
+  
+  // Calculate target position (centered on character)
+  let targetX = centerX - (x * scale);
+  let targetY = centerY - (y * scale);
+  
+  // Calculate the maximum allowed offsets
+  const maxOffsetX = (worldWidth * scale) - stageWidth;
+  const maxOffsetY = (worldHeight * scale) - stageHeight;
+  
+  // Clamp the target position to ensure the viewport stays within bounds
+  targetX = Math.max(-maxOffsetX, Math.min(0, targetX));
+  targetY = Math.max(-maxOffsetY, Math.min(0, targetY));
+  
+  return { x: targetX, y: targetY };
+};
+
 export const Character = ({
   textureUrl,
   spritesheetData,
@@ -32,7 +68,9 @@ export const Character = ({
   isViewer = false,
   speed = 0.1,
   onClick,
-  player
+  player,
+  worldWidth,
+  worldHeight
 }: {
   textureUrl: string;
   spritesheetData: ISpritesheetData;
@@ -47,6 +85,8 @@ export const Character = ({
   speed?: number;
   onClick: () => void;
   player: ServerPlayer;
+  worldWidth: number;
+  worldHeight: number;
 }) => {
   const [spriteSheet, setSpriteSheet] = useState<Spritesheet>();
   const containerRef = useRef<PIXI.Container>(null);
@@ -114,14 +154,26 @@ export const Character = ({
           requestAnimationFrame(animate);
         };
 
+        const boundedPosition = calculateBoundedCameraPosition(
+          centerX,
+          centerY,
+          x,
+          y,
+          ZOOM_LEVEL,
+          window.innerWidth,
+          window.innerHeight,
+          worldWidth,
+          worldHeight
+        );
+
         animateCamera(
           ZOOM_LEVEL,
-          centerX - (x * ZOOM_LEVEL),
-          centerY - (y * ZOOM_LEVEL)
+          boundedPosition.x,
+          boundedPosition.y
         );
       }
     }
-  }, [isZoomed, x, y, player?.id]);
+  }, [isZoomed, x, y, player?.id, worldWidth, worldHeight]);
 
   const handleClick = useCallback(() => {
     if (!containerRef.current?.parent) return;
@@ -198,10 +250,25 @@ export const Character = ({
         const centerX = window.innerWidth / 2;
         const centerY = window.innerHeight / 2;
         
+        const boundedPosition = calculateBoundedCameraPosition(
+          centerX,
+          centerY,
+          x,
+          y,
+          ZOOM_LEVEL,
+          window.innerWidth,
+          window.innerHeight,
+          worldWidth,
+          worldHeight
+        );
+
         animateCamera(
           ZOOM_LEVEL,
-          centerX - (x * ZOOM_LEVEL),
-          centerY - (y * ZOOM_LEVEL)
+          boundedPosition.x,
+          boundedPosition.y,
+          () => {
+            setIsZoomed(true);
+          }
         );
       }
     } 
@@ -225,10 +292,22 @@ export const Character = ({
       const centerX = window.innerWidth / 2;
       const centerY = window.innerHeight / 2;
       
+      const boundedPosition = calculateBoundedCameraPosition(
+        centerX,
+        centerY,
+        x,
+        y,
+        ZOOM_LEVEL,
+        window.innerWidth,
+        window.innerHeight,
+        worldWidth,
+        worldHeight
+      );
+
       animateCamera(
         ZOOM_LEVEL,
-        centerX - (x * ZOOM_LEVEL),
-        centerY - (y * ZOOM_LEVEL),
+        boundedPosition.x,
+        boundedPosition.y,
         () => {
           setIsZoomed(true);
         }
@@ -236,7 +315,7 @@ export const Character = ({
     }
     
     onClick();
-  }, [x, y, isZoomed, onClick, player?.id]);
+  }, [x, y, isZoomed, onClick, player?.id, worldWidth, worldHeight]);
 
   const roundedOrientation = Math.floor(orientation / 90);
   const direction = ['right', 'down', 'left', 'up'][roundedOrientation];

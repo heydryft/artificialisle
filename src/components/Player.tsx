@@ -90,6 +90,8 @@ export const Player = ({
           onClick({ kind: 'player', id: player.id });
           togglePlayerDetail(true);
         }}
+        worldWidth={game.worldMap.width * tileDim}
+        worldHeight={game.worldMap.height * tileDim}
       />
     </>
   );
