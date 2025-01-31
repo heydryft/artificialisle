@@ -81,6 +81,7 @@ export const Player = ({
             ? player.activity?.emoji
             : undefined
         }
+        player={player}
         isViewer={isViewer}
         textureUrl={character.textureUrl}
         spritesheetData={character.spritesheetData}

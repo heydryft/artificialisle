@@ -8,6 +8,17 @@ import { agents } from './AgentList';
 // Static ref outside component to ensure it's shared across all instances
 const static_zoomedCharacterId = { current: null as string | null };
 
+// Add these static refs to store the initial camera state
+const static_initialCameraState = {
+  scale: 0.5,
+  x: 0,
+  y: 0,
+  isSet: false
+};
+
+// Add a constant for consistent zoom level
+const ZOOM_LEVEL = 1.1;
+
 export const Character = ({
   textureUrl,
   spritesheetData,
@@ -58,9 +69,8 @@ export const Character = ({
   useEffect(() => {
     if (isZoomed && containerRef.current?.parent) {
       // Only follow if this is the character we zoomed to
-      if (static_zoomedCharacterId.current === player.id) {
+      if (static_zoomedCharacterId.current === player?.id) {
         const stage = containerRef.current.parent;
-        const zoomLevel = 2;
         const centerX = window.innerWidth / 2;
         const centerY = window.innerHeight / 2;
         
@@ -71,39 +81,112 @@ export const Character = ({
           x, y
         });
 
-        requestAnimationFrame(() => {
-          stage.scale.set(zoomLevel);
-          stage.position.set(
-            centerX - (x * zoomLevel),
-            centerY - (y * zoomLevel)
-          );
-        });
+        // Use the same animation function for smooth following
+        const animateCamera = (
+          targetScale: number,
+          targetX: number,
+          targetY: number
+        ) => {
+          const startScale = stage.scale.x;
+          const startX = stage.position.x;
+          const startY = stage.position.y;
+          const duration = 15; // Half the duration of zoom animation for smoother following
+          let frame = 0;
+
+          const animate = () => {
+            frame++;
+            const progress = frame / duration;
+            const easeProgress = Math.sin(progress * Math.PI / 2);
+
+            stage.scale.set(
+              startScale + (targetScale - startScale) * easeProgress
+            );
+            stage.position.set(
+              startX + (targetX - startX) * easeProgress,
+              startY + (targetY - startY) * easeProgress
+            );
+
+            if (frame < duration) {
+              requestAnimationFrame(animate);
+            }
+          };
+
+          requestAnimationFrame(animate);
+        };
+
+        animateCamera(
+          ZOOM_LEVEL,
+          centerX - (x * ZOOM_LEVEL),
+          centerY - (y * ZOOM_LEVEL)
+        );
       }
     }
-  }, [isZoomed, x, y, player.id]);
+  }, [isZoomed, x, y, player?.id]);
 
   const handleClick = useCallback(() => {
     if (!containerRef.current?.parent) return;
     const stage = containerRef.current.parent;
     
-    // If we're already zoomed in
+    // Animation helper function
+    const animateCamera = (
+      targetScale: number,
+      targetX: number,
+      targetY: number,
+      onComplete?: () => void
+    ) => {
+      const startScale = stage.scale.x;
+      const startX = stage.position.x;
+      const startY = stage.position.y;
+      const duration = 30; // frames (0.5 seconds at 60fps)
+      let frame = 0;
+
+      const animate = () => {
+        frame++;
+        const progress = frame / duration;
+        const easeProgress = Math.sin(progress * Math.PI / 2); // Smooth easing
+
+        stage.scale.set(
+          startScale + (targetScale - startScale) * easeProgress
+        );
+        stage.position.set(
+          startX + (targetX - startX) * easeProgress,
+          startY + (targetY - startY) * easeProgress
+        );
+
+        if (frame < duration) {
+          requestAnimationFrame(animate);
+        } else {
+          // Ensure we land exactly on target values
+          stage.scale.set(targetScale);
+          stage.position.set(targetX, targetY);
+          onComplete?.();
+        }
+      };
+
+      requestAnimationFrame(animate);
+    };
+    
     if (isZoomed) {
-      // If clicking the same character that's zoomed - zoom out
       if (static_zoomedCharacterId.current === player.id) {
-        setIsZoomed(false);
         static_zoomedCharacterId.current = null;
         
         console.log('Zooming out:', {
           playerId: player.id,
           agentName: agents.find(a => a.id === player.id)?.name || 'Unknown'
         });
-  
-        const mapCenterX = 1249 / 2;
-        const mapCenterY = 295 / 2;
-        stage.scale.set(0.5);
-        stage.position.set(mapCenterX, mapCenterY);
+
+        // Zoom out to the stored position
+        animateCamera(
+          static_initialCameraState.scale,
+          static_initialCameraState.x,
+          static_initialCameraState.y,
+          () => {
+            setIsZoomed(false);
+            static_initialCameraState.isSet = false;
+          }
+        );
       } 
-      // If clicking a different character while zoomed - switch to that character
+      // If clicking a different character while zoomed
       else {
         static_zoomedCharacterId.current = player.id;
         
@@ -111,41 +194,49 @@ export const Character = ({
           playerId: player.id,
           agentName: agents.find(a => a.id === player.id)?.name || 'Unknown'
         });
-  
-        const zoomLevel = 1.5;
+
         const centerX = window.innerWidth / 2;
         const centerY = window.innerHeight / 2;
         
-        stage.scale.set(zoomLevel);
-        stage.position.set(
-          centerX - (x * zoomLevel),
-          centerY - (y * zoomLevel)
+        animateCamera(
+          ZOOM_LEVEL,
+          centerX - (x * ZOOM_LEVEL),
+          centerY - (y * ZOOM_LEVEL)
         );
       }
     } 
     // Not zoomed - zoom in to clicked character
     else {
-      setIsZoomed(true);
       static_zoomedCharacterId.current = player.id;
+      
+      // Store current camera state before zooming in
+      if (!static_initialCameraState.isSet) {
+        static_initialCameraState.scale = stage.scale.x;
+        static_initialCameraState.x = stage.position.x;
+        static_initialCameraState.y = stage.position.y;
+        static_initialCameraState.isSet = true;
+      }
       
       console.log('Zooming in to:', {
         playerId: player.id,
         agentName: agents.find(a => a.id === player.id)?.name || 'Unknown'
       });
-  
-      const zoomLevel = 1.5;
+
       const centerX = window.innerWidth / 2;
       const centerY = window.innerHeight / 2;
       
-      stage.scale.set(zoomLevel);
-      stage.position.set(
-        centerX - (x * zoomLevel),
-        centerY - (y * zoomLevel)
+      animateCamera(
+        ZOOM_LEVEL,
+        centerX - (x * ZOOM_LEVEL),
+        centerY - (y * ZOOM_LEVEL),
+        () => {
+          setIsZoomed(true);
+        }
       );
     }
     
     onClick();
-  }, [x, y, isZoomed, onClick, player.id]);
+  }, [x, y, isZoomed, onClick, player?.id]);
 
   const roundedOrientation = Math.floor(orientation / 90);
   const direction = ['right', 'down', 'left', 'up'][roundedOrientation];
