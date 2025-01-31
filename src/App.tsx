@@ -165,10 +165,10 @@ export default function Home() {
                   <div className="w-16 h-16 mx-auto border-4 border-t-blue-500 border-blue-200 rounded-full animate-spin"></div>
                 </div>
                 <h2 className="text-2xl font-display text-white mb-2 game-title">
-                  Connecting to Artificial Isle...
+                  Connecting to DexMap...
                 </h2>
                 <div className="text-sm text-gray-400 font-pixel animate-pulse">
-                  Opening viewport to the ongoing adventure
+                  Loading agents...
                 </div>
               </div>
             </div>

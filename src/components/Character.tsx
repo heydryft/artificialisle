@@ -61,7 +61,7 @@ export const Character = ({
   useEffect(() => {
     if (isZoomed && containerRef.current?.parent) {
       const stage = containerRef.current.parent;
-      const zoomLevel = 2;
+      const zoomLevel = 1.1;
       const centerX = window.innerWidth / 2;
       const centerY = window.innerHeight / 2;
       
