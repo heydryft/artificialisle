@@ -2,6 +2,11 @@ import { BaseTexture, ISpritesheetData, Spritesheet } from 'pixi.js';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { AnimatedSprite, Container, Graphics, Text } from '@pixi/react';
 import * as PIXI from 'pixi.js';
+import { Player as ServerPlayer } from '../../convex/aiTown/player.ts';
+import { agents } from './AgentList';
+
+// Static ref outside component to ensure it's shared across all instances
+const static_zoomedCharacterId = { current: null as string | null };
 
 export const Character = ({
   textureUrl,
@@ -16,6 +21,7 @@ export const Character = ({
   isViewer = false,
   speed = 0.1,
   onClick,
+  player
 }: {
   textureUrl: string;
   spritesheetData: ISpritesheetData;
@@ -29,6 +35,7 @@ export const Character = ({
   isViewer?: boolean;
   speed?: number;
   onClick: () => void;
+  player: ServerPlayer;
 }) => {
   const [spriteSheet, setSpriteSheet] = useState<Spritesheet>();
   const containerRef = useRef<PIXI.Container>(null);
@@ -46,7 +53,99 @@ export const Character = ({
       setSpriteSheet(sheet);
     };
     void parseSheet();
-  }, []);
+  }, [textureUrl, spritesheetData]);
+
+  useEffect(() => {
+    if (isZoomed && containerRef.current?.parent) {
+      // Only follow if this is the character we zoomed to
+      if (static_zoomedCharacterId.current === player.id) {
+        const stage = containerRef.current.parent;
+        const zoomLevel = 2;
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        
+        const agentName = agents.find(a => a.id === player.id)?.name || 'Unknown';
+        console.log('Camera following:', {
+          playerId: player.id,
+          agentName,
+          x, y
+        });
+
+        requestAnimationFrame(() => {
+          stage.scale.set(zoomLevel);
+          stage.position.set(
+            centerX - (x * zoomLevel),
+            centerY - (y * zoomLevel)
+          );
+        });
+      }
+    }
+  }, [isZoomed, x, y, player.id]);
+
+  const handleClick = useCallback(() => {
+    if (!containerRef.current?.parent) return;
+    const stage = containerRef.current.parent;
+    
+    // If we're already zoomed in
+    if (isZoomed) {
+      // If clicking the same character that's zoomed - zoom out
+      if (static_zoomedCharacterId.current === player.id) {
+        setIsZoomed(false);
+        static_zoomedCharacterId.current = null;
+        
+        console.log('Zooming out:', {
+          playerId: player.id,
+          agentName: agents.find(a => a.id === player.id)?.name || 'Unknown'
+        });
+  
+        const mapCenterX = 1249 / 2;
+        const mapCenterY = 295 / 2;
+        stage.scale.set(0.5);
+        stage.position.set(mapCenterX, mapCenterY);
+      } 
+      // If clicking a different character while zoomed - switch to that character
+      else {
+        static_zoomedCharacterId.current = player.id;
+        
+        console.log('Switching to:', {
+          playerId: player.id,
+          agentName: agents.find(a => a.id === player.id)?.name || 'Unknown'
+        });
+  
+        const zoomLevel = 1.5;
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        
+        stage.scale.set(zoomLevel);
+        stage.position.set(
+          centerX - (x * zoomLevel),
+          centerY - (y * zoomLevel)
+        );
+      }
+    } 
+    // Not zoomed - zoom in to clicked character
+    else {
+      setIsZoomed(true);
+      static_zoomedCharacterId.current = player.id;
+      
+      console.log('Zooming in to:', {
+        playerId: player.id,
+        agentName: agents.find(a => a.id === player.id)?.name || 'Unknown'
+      });
+  
+      const zoomLevel = 1.5;
+      const centerX = window.innerWidth / 2;
+      const centerY = window.innerHeight / 2;
+      
+      stage.scale.set(zoomLevel);
+      stage.position.set(
+        centerX - (x * zoomLevel),
+        centerY - (y * zoomLevel)
+      );
+    }
+    
+    onClick();
+  }, [x, y, isZoomed, onClick, player.id]);
 
   const roundedOrientation = Math.floor(orientation / 90);
   const direction = ['right', 'down', 'left', 'up'][roundedOrientation];
@@ -57,53 +156,6 @@ export const Character = ({
       ref.current?.play();
     }
   }, [direction, isMoving]);
-
-  useEffect(() => {
-    if (isZoomed && containerRef.current?.parent) {
-      const stage = containerRef.current.parent;
-      const zoomLevel = 2;
-      const centerX = window.innerWidth / 2;
-      const centerY = window.innerHeight / 2;
-      
-      stage.scale.set(zoomLevel);
-      stage.position.set(
-        centerX - (x * zoomLevel),
-        centerY - (y * zoomLevel)
-      );
-    }
-  }, [isZoomed, x, y]); // Update when position changes
-
-  const handleClick = useCallback(() => {
-    
-    // Execute existing click handler
-    onClick();
-
-    // Toggle zoom state
-    setIsZoomed(prev => !prev);
-
-    if (containerRef.current?.parent) {
-        const stage = containerRef.current.parent;
-        
-        if (!isZoomed) {
-          // Zoom in - center on character position
-          const zoomLevel = 1.5;
-          const centerX = window.innerWidth / 2;
-          const centerY = window.innerHeight / 2;
-          
-          stage.scale.set(zoomLevel);
-          stage.position.set(
-            centerX - (x * zoomLevel),
-            centerY - (y * zoomLevel)
-          );
-        } else {
-            // Zoom out to center of map
-          const mapCenterX = 1249 / 2;  // 624.5
-          const mapCenterY = 295 / 2;   // 147.5
-          stage.scale.set(0.5);
-          stage.position.set(mapCenterX, mapCenterY);
-        }
-      }
-  }, [x, y, isZoomed, onClick]);
 
   if (!spriteSheet) return null;
 
@@ -131,7 +183,6 @@ export const Character = ({
       interactive={true} 
       pointerdown={handleClick}
       cursor="pointer"
-
     >
       {isThinking && (
         <Text 
