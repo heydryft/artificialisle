@@ -1,4 +1,4 @@
-# Artificial Isle 🏝️
+# DEXMAP 🏝️
 
 [Live Demo](https://artificialisle.lol)
 
