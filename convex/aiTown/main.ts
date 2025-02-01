@@ -7,6 +7,7 @@ import { sleep } from '../util/sleep';
 import { Id } from '../_generated/dataModel';
 import { ENGINE_ACTION_DURATION } from '../constants';
 
+
 export async function createEngine(ctx: MutationCtx) {
   const now = Date.now();
   const engineId = await ctx.db.insert('engines', {
@@ -126,6 +127,32 @@ export const runStep = internalAction({
       }
       throw e;
     }
+  },
+});
+
+export const getMessages = query({
+  args: { url: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+        .query('chatMessages')
+      .withIndex('by_url', (q) => q.eq('url', args.url))
+      .order('desc')
+      .take(50);
+  },
+});
+
+export const sendMessage = mutation({
+  args: {
+    text: v.string(),
+    url: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.insert('chatMessages', {
+      text: args.text,
+      url: args.url,
+      user: 'Anonymous',
+      timestamp: new Date().toISOString(),
+    });
   },
 });
 

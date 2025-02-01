@@ -79,7 +79,7 @@ export async function startConversationMessage(
         content: prompt.join('\n'),
       },
     ],
-    max_tokens: 300,
+    max_tokens: 150,
     stop: stopWords(otherPlayer.name, player.name),
   });
   return trimContentPrefx(content, lastPrompt);

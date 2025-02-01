@@ -21,6 +21,13 @@ export default defineSchema({
     .index('conversationId', ['worldId', 'conversationId'])
     .index('messageUuid', ['conversationId', 'messageUuid']),
 
+    chatMessages: defineTable({
+      text: v.string(),
+      url: v.string(),
+      user: v.string(),
+      timestamp: v.string(),
+  }).index('by_url', ['url']),
+
   ...agentTables,
   ...aiTownTables,
   ...engineTables,

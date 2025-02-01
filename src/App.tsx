@@ -15,6 +15,7 @@ import MusicButton from './components/buttons/MusicButton.tsx';
 import Button from './components/buttons/Button.tsx';
 import { UnifiedWalletButton, UnifiedWalletProvider } from '@jup-ag/wallet-adapter';
 import { ConnectWalletButton, SendSolButton } from './components/WalletComponent.tsx';
+import ChatButton from './components/buttons/ChatButton.tsx';
 import InteractButton from './components/buttons/InteractButton.tsx';
 import FreezeButton from './components/FreezeButton.tsx';
 // import InteractButton from './components/buttons/InteractButton.tsx';
@@ -180,6 +181,7 @@ export default function Home() {
                {/* <FreezeButton />
 
               <InteractButton /> */}
+              <ChatButton />
 
               <ConnectWalletButton />
 
